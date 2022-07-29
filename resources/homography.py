@@ -9,7 +9,7 @@ parser = argparse.ArgumentParser(description='Compute Homography')
 parser.add_argument("--mode", type=str, default="compute", required=True)
 parser.add_argument("--image_points_path", type=str, default=None)
 parser.add_argument("--map_points_path", type=str, default=None)
-parser.add_argument("--camera_name", type=str, default="camera")
+# parser.add_argument("--camera_name", type=str, default="camera")
 parser.add_argument("--homography_path", type=str, default=None)
 parser.add_argument("--frame_path", type=str, default=None)
 parser.add_argument("--map_path", type=str, default=None)
@@ -51,8 +51,21 @@ def compute_homography():
     inp_points = read_points_json(args.image_points_path)
     map_points = read_points_json(args.map_points_path)
     H, _ = cv2.findHomography(inp_points, map_points)
-    h_path = os.path.join(args.output_dir, args.camera_name + "_homography.npy")
+    h_path = os.path.join(args.output_dir, "homography_matrix.npy")
     np.save(h_path, H)
+    return
+
+def resize_and_concat(image_path_a, image_path_b, output_dir):
+    img1 = cv2.imread(image_path_a)
+    img2 = cv2.imread(image_path_b)
+    
+    # Resize Images to same size for viewing easily. 
+    img1 = cv2.resize(img1, (1000,1000))
+    img2 = cv2.resize(img2, (1000,1000))
+
+    # Concat & Save
+    img = cv2.hconcat([img1,img2])
+    cv2.imwrite(os.path.join(output_dir, "annotated_stitched_image.png"), img)
     return
 
 def draw_points(points, image_path, op_image_path):
@@ -77,12 +90,17 @@ def apply_homography():
     warped_points = warped_points.squeeze().astype(int)
 
     # Save Annotated Frame
-    draw_points(image_points, args.frame_path, os.path.join(args.output_dir, "annotated_" + frame_basename + ".png"))
-    # cv2.imshow("annotated frame", cv2.resize(cv2.imread(os.path.join(args.output_dir, "annotated_" + frame_basename + ".png")), (1000, 1000)))
+    annotated_frame_path = os.path.join(args.output_dir, "annotated_" + frame_basename + ".png")
+    draw_points(image_points, args.frame_path, annotated_frame_path)
+
     # Save Annotated Map
-    draw_points(warped_points, args.map_path, os.path.join(args.output_dir, "annotated_" + map_basename + ".png"))
-    # cv2.imshow("annotated map", cv2.resize(cv2.imread(os.path.join(args.output_dir, "annotated_" + map_basename + ".png")), (1000, 1000)))
-    # cv2.waitKey(0)
+    annotated_map_path = os.path.join(args.output_dir, "annotated_" + map_basename + ".png")
+    draw_points(warped_points, args.map_path, annotated_map_path)
+
+    # Vertically Concatenate
+    resize_and_concat(annotated_frame_path, annotated_map_path, args.output_dir)
+    
+    print("Homography applied successfully!")
     return
 
 # Identify Missing Arguments
@@ -94,6 +112,10 @@ if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
 
 if args.mode == "compute_homography":
+    print("Computing homography matrix...")
     compute_homography()
+    print("Homography matrix computed successfully!")
 else: # apply_homography
+    print("Applying homography on the selected frame...")
     apply_homography()
+    print("Homography visualization successfully completed! Please check the output directory for the image!")
