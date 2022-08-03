@@ -50,7 +50,7 @@ def read_points_json(json_path):
 def compute_homography():
     inp_points = read_points_json(args.image_points_path)
     map_points = read_points_json(args.map_points_path)
-    H, _ = cv2.findHomography(inp_points, map_points)
+    H, _ = cv2.findHomography(inp_points, map_points, cv2.RANSAC)
     h_path = os.path.join(args.output_dir, "homography_matrix.npy")
     np.save(h_path, H)
     return
