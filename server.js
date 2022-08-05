@@ -14,7 +14,8 @@ const storage = multer.diskStorage({
     callback(null, "./resources/uploads")
   },
   filename: (req, file, callback) => {
-    callback(null, file.originalname)
+    // Name of the file to be saved in uploads
+    callback(null, "ground_frame.png")
   }
 });
 var upload = multer({ storage: storage })
