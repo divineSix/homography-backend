@@ -14,6 +14,8 @@ parser.add_argument("--homography_path", type=str, default=None)
 parser.add_argument("--frame_path", type=str, default=None)
 parser.add_argument("--map_path", type=str, default=None)
 parser.add_argument("--output_dir", type=str, default="")
+# parser.add_argument("--is_boundary", type=boolean, default=False)
+parser.add_argument('--is_boundary', action='store_true')
 args = parser.parse_args()
 
 # Global variables
@@ -79,7 +81,23 @@ def draw_points(points, image_path, op_image_path):
         c = c + 1
     cv2.imwrite(op_image_path, image)
 
-def apply_homography():
+def draw_boundary(points, image_path, op_image_path):
+    image = cv2.imread(image_path)
+    color = (0,0, 255) # red color in BGR
+    
+    # Fitting an ellipse for the boundary through the points. 
+    ellipse = cv2.fitEllipse(points.reshape(-1,1,2))
+    image = cv2.ellipse(image, ellipse, color, 2)
+
+    # Drawing a polygon through the points. 
+    # image = cv2.polylines(image, [points.reshape(-1,1,2)], True, color, 2)
+    
+    # Drawing a contour through the points. 
+    # Observed: Similar output to cv2.polylines in this case. 
+    # image = cv2.drawContours(image, [points.reshape(-1,1,2)], -1, color, 2)
+    cv2.imwrite(op_image_path, image)
+
+def apply_homography(isBoundaryPoints: bool = False):
     image_points = read_points_json(args.image_points_path)
     frame_basename = os.path.basename(args.frame_path).split(".")[0]
     map_basename = os.path.basename(args.map_path).split(".")[0]
@@ -92,10 +110,15 @@ def apply_homography():
     # Save Annotated Frame
     annotated_frame_path = os.path.join(args.output_dir, "annotated_" + frame_basename + ".png")
     draw_points(image_points, args.frame_path, annotated_frame_path)
-
-    # Save Annotated Map
-    annotated_map_path = os.path.join(args.output_dir, "annotated_" + map_basename + ".png")
-    draw_points(warped_points, args.map_path, annotated_map_path)
+    
+    if isBoundaryPoints:
+        # Save boundary points and draw the polylines. 
+        annotated_map_path = os.path.join(args.output_dir, "boundary_map.png")
+        draw_boundary(warped_points, args.map_path, annotated_map_path)
+    else:
+        # Save Annotated Map
+        annotated_map_path = os.path.join(args.output_dir, "annotated_" + map_basename + ".png")
+        draw_points(warped_points, args.map_path, annotated_map_path)
 
     # Vertically Concatenate
     resize_and_concat(annotated_frame_path, annotated_map_path, args.output_dir)
@@ -117,5 +140,5 @@ if args.mode == "compute_homography":
     print("Homography matrix computed successfully!")
 else: # apply_homography
     print("Applying homography on the selected frame...")
-    apply_homography()
+    apply_homography(args.is_boundary)
     print("Homography visualization successfully completed! Please check the output directory for the image!")
