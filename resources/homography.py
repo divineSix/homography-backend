@@ -75,7 +75,7 @@ def draw_points(points, image_path, op_image_path):
         # Mark a solid point in the map image. 
         cv2.circle(image, (int(point[0]), int(point[1])), 10, colors[c % len(colors)], -1)
         image = cv2.putText(image, str(c), (int(point[0] - 20), int(point[1] + 45)), cv2.FONT_HERSHEY_SIMPLEX, 
-                    1, (0, 0, 0), 2, cv2.LINE_AA)
+                    1, (0, 0, 255), 2, cv2.LINE_AA)
         c = c + 1
     cv2.imwrite(op_image_path, image)
 
