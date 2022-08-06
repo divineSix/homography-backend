@@ -158,6 +158,16 @@ app.post("/api/visualize_homography", upload.single("file"), (request, response,
   response.send(response_obj);
 });
 
+app.post("/api/start_process", (request, response) => {
+  shell.exec("bash ./resources/start_shell.sh", { async: true });
+  response.send({ message: "Start Script Triggered!"});
+});
+
+app.post("/api/stop_process", (request, response) => {
+  shell.exec("bash ./resources/stop_shell.sh", { async: true });
+  response.send({ message: "Stop Script Triggered!!" });
+});
+
 const server = http.createServer(app);
 server.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);
