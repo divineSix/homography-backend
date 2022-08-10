@@ -42,8 +42,7 @@ app.post('/api/compute_homography', (request, res) => {
   // Create sub-directory
   fs.mkdir("./resources/compute-homography", { recursive: true }, no_op);
   // Write the image & map points onto respective json files. 
-  // WriteFile vs WriteFileSync
-  fs.writeFileSync("./resources/compute-homography/image_points.json", JSON.stringify({ "points": request.body["image-points"] }))
+  fs.writeFileSync("./resources/compute-homography/image_points.json", JSON.stringify({ "points": request.body["image-points"] })); // WriteFile vs WriteFileSync
   fs.writeFileSync("./resources/compute-homography/map_points.json", JSON.stringify({ "points": request.body["map-points"] }))
 
   var options = {
@@ -54,12 +53,8 @@ app.post('/api/compute_homography', (request, res) => {
   };
   let strOptions = constructShellCommand(options);
   let execCmd = "python3 ./resources/homography.py " + strOptions;
-  // Complete homography.py script execution
-  // shell.exec("python3 ./resources/homography.py --mode compute_homography --image_points_path ./resources/compute-homography/image_points.json --map_points_path ./resources/compute-homography/map_points.json --output_dir ./resources/compute-homography", { async: false });
   shell.exec(execCmd, { async: false });
-  console.log(execCmd);
-  // TODO: Error Handling of File-writes
-  // TODO: Error handling of shelljs exec. 
+  // console.log(execCmd);
 
   response_obj = {
     "message": "Execution completed!!"
@@ -123,10 +118,12 @@ app.post("/api/visualize_homography", upload.single("file"), (request, response,
   // Save the incoming image points in the visualize-homography directory
   dataObj = JSON.parse(request.body.data);
   image_points = dataObj["image-points"];
+  image_points_filename = (dataObj["is-boundary"] === true) ? "boundary_points.json" : "image_points.json";
+  image_points_filepath = "./resources/visualize-homography/" + image_points_filename;
   // fs.mkdir("./resources/visualize-homography", {recursive: true}, no_op);
-  fs.writeFileSync("./resources/visualize-homography/image_points.json", JSON.stringify({ "points": image_points }))
+  fs.writeFileSync(image_points_filepath, JSON.stringify({ "points": image_points }));
 
-  // TODO: Conditional construction of the exec command as a string. 
+  // Conditional construction of the exec command as a string. 
   base_map_path = "./resources/visualize-homography/cricket_map.png";
   if (!dataObj["is-boundary"]) {
     if (fs.existsSync("./resources/visualize-homography/boundary_map.png"))
@@ -135,7 +132,7 @@ app.post("/api/visualize_homography", upload.single("file"), (request, response,
 
   var options = {
     "mode": "apply_homography",
-    "image_points_path": "./resources/visualize-homography/image_points.json",
+    "image_points_path": image_points_filepath,
     "homography_path": "./resources/compute-homography/homography_matrix.npy",
     "frame_path": "./resources/uploads/ground_frame.png",
     "map_path": base_map_path,
@@ -143,10 +140,9 @@ app.post("/api/visualize_homography", upload.single("file"), (request, response,
     "is_boundary": (dataObj["is-boundary"] === true)
   }
   let strOptions = constructShellCommand(options);
-  // let execCmd = "python3 ./resources/homography.py " + strOptions;
-  let execCmd = "python3 ./resources/homography.py --mode apply_homography --image_points_path ./resources/visualize-homography/image_points.json --homography_path ./resources/compute-homography/homography_matrix.npy --frame_path ./resources/uploads/ground_frame.png --map_path " + base_map_path + " --output_dir ./resources/visualize-homography " + (dataObj["is-boundary"] === true ? "--is_boundary" : ""); 
+  let execCmd = "python3 ./resources/homography.py " + strOptions;
   // Trigger the visualization script.
-  console.log(execCmd);
+  // console.log(execCmd);
   shell.exec(execCmd, { async: false });
 
   response_obj = {
