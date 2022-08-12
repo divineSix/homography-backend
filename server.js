@@ -54,7 +54,6 @@ app.post('/api/compute_homography', (request, res) => {
   let strOptions = constructShellCommand(options);
   let execCmd = "python3 ./resources/homography.py " + strOptions;
   shell.exec(execCmd, { async: false });
-  // console.log(execCmd);
 
   response_obj = {
     "message": "Execution completed!!"
@@ -72,7 +71,7 @@ app.post("/api/visualize_homography", upload.single("file"), (request, response,
       "message": "Please upload the ground frame!",
       "code": 400
     };
-    response.status(300).send({ error: error_obj });
+    response.status(300).send(error_obj);
     return;
   }
 
@@ -81,7 +80,7 @@ app.post("/api/visualize_homography", upload.single("file"), (request, response,
       "message": "Please upload an image! Other file types are not supported.",
       "code": 400
     };
-    response.status(400).send({ error: error_obj });
+    response.status(400).send(error_obj);
     return;
   }
 
@@ -91,7 +90,7 @@ app.post("/api/visualize_homography", upload.single("file"), (request, response,
       "message": "Please send image points data as a valid JSON!",
       "code": 400
     };
-    response.status(400).send({ error: error_obj });
+    response.status(400).send(error_obj);
     return;
   }
 
@@ -101,26 +100,24 @@ app.post("/api/visualize_homography", upload.single("file"), (request, response,
       "message": "Homography matrix not found! Please compute the homography first before visualizing it!",
       "code": 404
     };
-    response.status(404).send({ error: error_obj });
+    response.status(400).send(error_obj);
     return;
   }
 
-  // TODO: Check for boundary image OR base-map image. 
   if (!fs.existsSync("./resources/visualize-homography/cricket_map.png")) {
     error_obj = {
       "message": "Please add the image of the standard cricket map for visualizing homography!",
       "code": 404
     }
-    response.status(404).send({ error: error_obj });
+    response.status(400).send(error_obj);
     return;
   }
 
   // Save the incoming image points in the visualize-homography directory
   dataObj = JSON.parse(request.body.data);
   image_points = dataObj["image-points"];
-  image_points_filename = (dataObj["is-boundary"] === true) ? "boundary_points.json" : "image_points.json";
+  image_points_filename = (dataObj["is-boundary"] === true) ? "boundary_points.json" : "vis_image_points.json";
   image_points_filepath = "./resources/visualize-homography/" + image_points_filename;
-  // fs.mkdir("./resources/visualize-homography", {recursive: true}, no_op);
   fs.writeFileSync(image_points_filepath, JSON.stringify({ "points": image_points }));
 
   // Conditional construction of the exec command as a string. 
@@ -141,8 +138,8 @@ app.post("/api/visualize_homography", upload.single("file"), (request, response,
   }
   let strOptions = constructShellCommand(options);
   let execCmd = "python3 ./resources/homography.py " + strOptions;
+  
   // Trigger the visualization script.
-  // console.log(execCmd);
   shell.exec(execCmd, { async: false });
 
   response_obj = {
@@ -152,6 +149,62 @@ app.post("/api/visualize_homography", upload.single("file"), (request, response,
     }
   }
   response.send(response_obj);
+});
+
+app.post("/api/backups", (request, response) => {
+  try {
+    
+    fs.mkdir("./resources/backups", { recursive: true }, no_op);
+    
+    folderpath = "./resources/backups/" + request.body["backup_folder"];
+
+    if(fs.existsSync(folderpath)) {
+      error_obj = {
+        "message": "Backup folder with the same name already exists!",
+        "code": 404
+      }
+      response.status(404).send(error_obj);
+      return;
+    }
+
+    fs.mkdir(folderpath, { recursive: true }, no_op);
+    
+    // Backup & Clear files in compute-homography
+    var comp_dirents = fs.readdirSync("./resources/compute-homography", {withFileTypes: true})
+    if(comp_dirents) {
+      let files = comp_dirents.filter(dirent => dirent.isFile()).map(dirent => dirent.name)
+      files.forEach(file => {
+        fs.cpSync("./resources/compute-homography/" + file, folderpath + "/" + file);
+        fs.rmSync("./resources/compute-homography/" + file);
+      });
+    }
+
+    // Backup & Clear files in visualize-homography
+    var vis_dirents = fs.readdirSync("./resources/visualize-homography", { withFileTypes: true });
+    if (vis_dirents) {
+      let files = vis_dirents.filter(dirent => dirent.isFile()).map(dirent => dirent.name);
+      files.forEach(file => {
+        if (file !== "cricket_map.png") {
+          fs.cpSync("./resources/visualize-homography/" + file, folderpath + "/" + file);
+          fs.rmSync("./resources/visualize-homography/" + file);
+        }
+      });
+    }
+
+    response_obj = {
+      "message": "Files backed up successfully!!"
+    }
+    response.send(response_obj);
+  }
+  catch (err) {
+    error_obj = {
+      "message": "Internal Server Error!",
+      "code": 500,
+      "details": err.toString()
+    }
+    response.status(500).send(error_obj);
+    return;
+  }
 });
 
 app.post("/api/start_process", (request, response) => {
