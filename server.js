@@ -6,7 +6,7 @@ const path = require('path');
 const port = process.env.PORT || 3001;
 const shell = require('shelljs');
 const cors = require('cors');
-
+console.log(`Port: ${port}`)
 // Multer for reading files via API
 const multer = require('multer');
 const storage = multer.diskStorage({
